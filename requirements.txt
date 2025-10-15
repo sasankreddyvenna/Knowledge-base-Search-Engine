@@ -1,0 +1,6 @@
+flask
+numpy
+faiss-cpu
+sentence-transformers
+google-genai
+pypdf

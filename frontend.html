@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>RAG Document Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Inter, Arial, sans-serif;
+      margin: 24px;
+      background: #00006f;
+      color: #0f172a;
+    }
+
+    .card {
+      background: rgb(158, 245, 155);
+      padding: 18px;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+      max-width: 900px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+    }
+
+    label {
+      font-weight: 600;
+      display:block;
+      margin-top: 12px;
+    }
+
+    input[type=file], input[type=text], button, textarea {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #374151;
+    }
+
+    .small {
+      font-size: 13px;
+      color:#475569;
+    }
+
+    /* Chat history styles */
+    #chatHistory {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      margin-top: 12px;
+    }
+
+    .chat-msg {
+      max-width: 70%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .chat-user {
+      background: #2563eb;
+      color: white;
+      align-self: flex-end;
+      border-radius: 12px 12px 0 12px;
+    }
+
+    .chat-bot {
+      background: #e8e8e8;
+      color: #000;
+      align-self: flex-start;
+      border-radius: 12px 12px 12px 0;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>📘 RAG Document Chat</h1>
+    <p class="small">Upload PDFs to index them. Ask questions — the system will use documents when relevant, otherwise it will answer generally.</p>
+
+    <label>Upload PDF</label>
+    <input type="file" id="pdfFile" accept=".pdf" multiple />
+    <button onclick="uploadPDF()">Upload & Index</button>
+    <div id="uploadStatus" class="small"></div>
+  </div>
+
+  <div class="card">
+    <label>Chat</label>
+    <div id="chatHistory"></div>
+    <input type="text" id="question" placeholder="Type your question..." style="width:75%" />
+    <button onclick="askQuestion()">Ask</button>
+    <button class="secondary" onclick="clearChat()">Clear</button>
+  </div>
+
+<script>
+async function uploadPDF() {
+  const fileInput = document.getElementById("pdfFile");
+  if (!fileInput.files.length) return alert("Select a PDF first!");
+  const formData = new FormData();
+  for (let f of fileInput.files) formData.append("file", f);
+
+  document.getElementById("uploadStatus").innerText = "Uploading and indexing... (this may take a few seconds)";
+  try {
+    const res = await fetch("/upload", { method: "POST", body: formData });
+    const data = await res.json();
+    if (!res.ok) {
+      document.getElementById("uploadStatus").innerText = "Error: " + (data.error || res.statusText);
+    } else {
+      document.getElementById("uploadStatus").innerText = data.message + " — " + data.chunks + " chunks indexed.";
+    }
+  } catch (e) {
+    document.getElementById("uploadStatus").innerText = "Upload failed: " + e.message;
+  }
+}
+
+async function askQuestion() {
+  const q = document.getElementById("question").value.trim();
+  if (!q) return alert("Enter a question!");
+  document.getElementById("question").value = "";
+
+  const chatHistory = document.getElementById("chatHistory");
+
+  // Add user message
+  const userMsg = document.createElement("div");
+  userMsg.className = "chat-msg chat-user";
+  userMsg.textContent = q;
+  chatHistory.appendChild(userMsg);
+
+  // Add bot placeholder
+  const botMsg = document.createElement("div");
+  botMsg.className = "chat-msg chat-bot";
+  botMsg.textContent = "Thinking...";
+  chatHistory.appendChild(botMsg);
+
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+
+  try {
+    const res = await fetch("/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: q })
+    });
+    const data = await res.json();
+    const mode = data.mode === "rag" ? "PDF-based Answer" : "General Answer";
+    let answerText = `Mode: ${mode}\n\n${data.answer}`;
+
+    if (data.sources && data.sources.length) {
+      answerText += "\n\nRetrieved chunks:\n";
+      data.sources.forEach(m => {
+        answerText += `• index=${m.index} score=${m.score.toFixed(4)}\n`;
+      });
+    }
+
+    botMsg.textContent = answerText;
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+  } catch (e) {
+    botMsg.textContent = "Request failed: " + e.message;
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+  }
+}
+
+function clearChat() {
+  document.getElementById("chatHistory").innerHTML = "";
+  document.getElementById("uploadStatus").innerText = "";
+  document.getElementById("question").value = "";
+}
+</script>
+
+</body>
+</html>
