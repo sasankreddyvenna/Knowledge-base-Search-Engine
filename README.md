@@ -5,6 +5,8 @@ This project is a minimal Retrieval-Augmented Generation (RAG) demo:
 - Uses **Google Gemini** (via `google-genai` SDK) as the LLM to synthesize answers
 - Simple single-file frontend (`frontend.html`) for uploading PDFs and asking questions
 
+[**Watch the Demo Video on Google Drive**](https://drive.google.com/file/d/1A-_AT5dWRp73Koz6ZK25A0yKK8V8pMeu/view?usp=sharing)
+
 Features:
 - If a question is relevant to indexed PDFs, the system replies using retrieved document context (RAG mode).
 - Otherwise, it falls back to a general Gemini response (free mode).
