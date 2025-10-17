@@ -260,8 +260,6 @@ def query_docs():
         return jsonify({"answer": answer, "mode": "free", "sources": []}), 200
 
 if __name__ == "__main__":
-    # In PowerShell for current session:
-    #   $Env:GEMINI_API_KEY="YOUR_API_KEY"
-    # Persist for new shells:
-    #   setx GEMINI_API_KEY "YOUR_API_KEY"  (then open a new window)
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)
